@@ -1,10 +1,9 @@
 
 // Visual Colors
 export const COLORS = {
-  // Background Gradient Stops (Reference Image: Soft Pink -> Fresh Green)
-  bgStop1: '#FFD6E5', // Soft Pink (Top)
-  bgStop2: '#E0EFDE', // Pale Transition (Mid)
-  bgStop3: '#78C28F', // Fresh Green (Bot)
+  // Background Gradient Stops
+  bgTop: '#052b52',    // Deep Midnight Blue (Top) - Matches the reference upper tone
+  bgBottom: '#000000', // Pure Black (Bottom)
   
   // Rich Flower Palette (Gradient support)
   petalGradientStart: '#FFFFFF', // Pure White tip

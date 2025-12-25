@@ -14,6 +14,16 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
   const particlesRef = useRef<ParticleEntity[]>([]);
   
   const mouseRef = useRef<{ x: number; y: number; prevX: number; prevY: number }>({ x: -1, y: -1, prevX: -1, prevY: -1 });
+  
+  // Track visual trails for mouse
+  const mouseVisualRef = useRef<{
+    x: number,
+    y: number,
+    life: number,
+    isCutting: boolean,
+    path: {x: number, y: number}[] 
+  } | null>(null);
+
   const animationFrameRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
   const isResettingRef = useRef<boolean>(false);
@@ -415,80 +425,150 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
 
   const drawBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, COLORS.bgStop1); // Top
-    gradient.addColorStop(0.5, COLORS.bgStop2); // Mid
-    gradient.addColorStop(1, COLORS.bgStop3); // Bot
+    gradient.addColorStop(0, COLORS.bgTop); 
+    gradient.addColorStop(1, COLORS.bgBottom); 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
   };
 
-  const drawGestureIndicator = (ctx: CanvasRenderingContext2D) => {
-      if (gestureCursorRef.current && gestureCursorRef.current.life > 0) {
-          const { x, y, isCutting, path } = gestureCursorRef.current;
+  // Helper to generate smooth curve points from sparse path
+  const getSpinePoints = (rawPath: {x: number, y: number}[]) => {
+      if (rawPath.length < 2) return rawPath;
+      
+      const spine: {x: number, y: number}[] = [];
+      spine.push(rawPath[0]); // Start point
+
+      for (let i = 1; i < rawPath.length - 1; i++) {
+          const p0 = (i === 1) ? rawPath[0] : { 
+              x: (rawPath[i-1].x + rawPath[i].x)/2, 
+              y: (rawPath[i-1].y + rawPath[i].y)/2 
+          };
+          const p1 = rawPath[i];
+          const p2 = { 
+              x: (rawPath[i].x + rawPath[i+1].x)/2, 
+              y: (rawPath[i].y + rawPath[i+1].y)/2 
+          };
+
+          const dist = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+          const steps = Math.max(2, Math.ceil(dist / 5)); // Resolution ~5px
+
+          for (let s = 1; s <= steps; s++) {
+              const t = s / steps;
+              const it = 1 - t;
+              // Quadratic Bezier
+              const x = (it*it * p0.x) + (2*it*t * p1.x) + (t*t * p2.x);
+              const y = (it*it * p0.y) + (2*it*t * p1.y) + (t*t * p2.y);
+              spine.push({x, y});
+          }
+      }
+
+      // Final segment to actual last point
+      if (rawPath.length > 1) {
+          const lastIndex = rawPath.length - 1;
+          const pLast = rawPath[lastIndex];
+          const pPrev = (spine.length > 0) ? spine[spine.length-1] : rawPath[lastIndex-1];
           
-          ctx.save();
-          
-          if (isCutting) {
-            // Draw Trailing Slash using Quadratic Curves for smoothness
-            if (path.length > 2) {
-                ctx.beginPath();
-                ctx.moveTo(path[0].x, path[0].y);
+          // Interpolate to the very end
+          const dist = Math.hypot(pLast.x - pPrev.x, pLast.y - pPrev.y);
+          const steps = Math.max(2, Math.ceil(dist / 5));
+          for(let s=1; s<=steps; s++) {
+             const t = s/steps;
+             spine.push({
+                 x: pPrev.x + (pLast.x - pPrev.x)*t,
+                 y: pPrev.y + (pLast.y - pPrev.y)*t
+             });
+          }
+      }
+      
+      return spine;
+  };
+
+  const drawCursorTrail = (ctx: CanvasRenderingContext2D, cursor: { x: number, y: number, isCutting: boolean, path: {x: number, y: number}[], life: number } | null) => {
+      if (!cursor || cursor.life <= 0 || cursor.path.length < 2) return;
+      const { x, y, isCutting, path } = cursor;
+      
+      ctx.save();
+      // Fade out based on life
+      const alphaMod = Math.min(1, cursor.life / 5);
+      
+      if (isCutting) {
+        const spine = getSpinePoints(path);
+        
+        if (spine.length > 1) {
+            const leftPts: {x: number, y: number}[] = [];
+            const rightPts: {x: number, y: number}[] = [];
+            
+            const maxW = 3.0; // Changed from 8.0 to 3.0 for a sharper blade
+            const minW = 0.5;
+
+            for (let i = 0; i < spine.length; i++) {
+                const current = spine[i];
+                const prev = (i > 0) ? spine[i-1] : spine[0];
+                const next = (i < spine.length - 1) ? spine[i+1] : spine[spine.length-1];
                 
-                // Draw curve through points using midpoints
-                for (let i = 1; i < path.length - 1; i++) {
-                    const xc = (path[i].x + path[i + 1].x) / 2;
-                    const yc = (path[i].y + path[i + 1].y) / 2;
-                    ctx.quadraticCurveTo(path[i].x, path[i].y, xc, yc);
-                }
-                // Connect to last point
-                ctx.lineTo(path[path.length - 1].x, path[path.length - 1].y);
+                let dx = next.x - prev.x;
+                let dy = next.y - prev.y;
+                if (dx === 0 && dy === 0) { dx = 1; dy = 0; }
                 
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.lineWidth = 4;
-                // BRIGHTNESS REDUCED BY ~50%
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
-                ctx.shadowBlur = 15;
-                ctx.stroke();
+                const len = Math.sqrt(dx*dx + dy*dy);
+                const nx = -dy / len; 
+                const ny = dx / len;  
+                
+                const t = i / (spine.length - 1);
+                // Width: Thin tail -> Thick head
+                const w = minW + (maxW - minW) * Math.pow(t, 2); // Squared for sharper taper at tail
+                
+                leftPts.push({ x: current.x + nx * w, y: current.y + ny * w });
+                rightPts.push({ x: current.x - nx * w, y: current.y - ny * w });
             }
-
-            // Tip of the blade (Refined to look like a finger/touch point)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.5)'; // Reduced brightness
             
-            // Core
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(leftPts[0].x, leftPts[0].y);
+            for (let i = 1; i < leftPts.length; i++) ctx.lineTo(leftPts[i].x, leftPts[i].y);
+            ctx.lineTo(rightPts[rightPts.length - 1].x, rightPts[rightPts.length - 1].y);
+            for (let i = rightPts.length - 2; i >= 0; i--) ctx.lineTo(rightPts[i].x, rightPts[i].y);
+            ctx.closePath();
             
-            // Ring
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; // Reduced brightness
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, Math.PI * 2);
-            ctx.stroke();
-
-          } else {
-            // Gentle Halo when just tracking
-            const grad = ctx.createRadialGradient(x, y, 5, x, y, 40);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)'); // Reduced opacity
-            grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+            const head = spine[spine.length-1];
+            const tail = spine[0];
+            const grad = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+            
+            // Opacity Gradient: Weak tail -> Strong head
+            grad.addColorStop(0, `rgba(255, 255, 255, 0)`);
+            grad.addColorStop(1, `rgba(255, 255, 255, ${0.9 * alphaMod})`);
             
             ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(x, y, 40, 0, Math.PI * 2);
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = `rgba(255, 255, 255, ${0.5 * alphaMod})`;
             ctx.fill();
-            
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; // Reduced opacity
-            ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          
-          ctx.restore();
+        }
+
+        // Tip Glow (Head)
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = `rgba(255, 255, 255, ${0.8 * alphaMod})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${1.0 * alphaMod})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2); // Slightly smaller tip radius
+        ctx.fill();
+
+      } else {
+        // Halo code for non-cutting state (rarely used for mouse now as isCutting is true)
+        const grad = ctx.createRadialGradient(x, y, 5, x, y, 40);
+        grad.addColorStop(0, `rgba(255, 255, 255, ${0.15 * alphaMod})`);
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, 40, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * alphaMod})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
       }
+      
+      ctx.restore();
   };
 
   const drawFlower = (ctx: CanvasRenderingContext2D, flower: FlowerEntity, screenHeight: number) => {
@@ -851,7 +931,18 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
       flowersRef.current.forEach(f => drawFlower(ctx, f, canvas.height));
       debrisRef.current.forEach(d => drawDebris(ctx, d));
       drawParticles(ctx);
-      drawGestureIndicator(ctx);
+      
+      // Draw trails
+      drawCursorTrail(ctx, gestureCursorRef.current);
+      drawCursorTrail(ctx, mouseVisualRef.current);
+
+      // Decay visual for mouse
+      if (mouseVisualRef.current) {
+        mouseVisualRef.current.life -= 1;
+        if (mouseVisualRef.current.life <= 0) {
+            mouseVisualRef.current = null;
+        }
+      }
       
       mouseRef.current.prevX = mouseRef.current.x;
       mouseRef.current.prevY = mouseRef.current.y;
@@ -873,16 +964,46 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect) {
-      mouseRef.current.x = e.clientX - rect.left;
-      mouseRef.current.y = e.clientY - rect.top;
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      mouseRef.current.x = x;
+      mouseRef.current.y = y;
+
+      // Update Mouse Visual
+      if (!mouseVisualRef.current) {
+         mouseVisualRef.current = { x, y, life: 10, isCutting: true, path: [{x, y}] };
+      } else {
+         const mv = mouseVisualRef.current;
+         mv.x = x;
+         mv.y = y;
+         mv.life = 10;
+         mv.path.push({x, y});
+         if (mv.path.length > 20) mv.path.shift();
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect && e.touches.length > 0) {
-          mouseRef.current.x = e.touches[0].clientX - rect.left;
-          mouseRef.current.y = e.touches[0].clientY - rect.top;
+          const x = e.touches[0].clientX - rect.left;
+          const y = e.touches[0].clientY - rect.top;
+          
+          mouseRef.current.x = x;
+          mouseRef.current.y = y;
+          
+          // Update Touch Visual
+          if (!mouseVisualRef.current) {
+             mouseVisualRef.current = { x, y, life: 10, isCutting: true, path: [{x, y}] };
+          } else {
+             const mv = mouseVisualRef.current;
+             mv.x = x;
+             mv.y = y;
+             mv.life = 10;
+             mv.path.push({x, y});
+             if (mv.path.length > 20) mv.path.shift();
+          }
       }
   }
 
