@@ -1,0 +1,7 @@
+{
+  "name": "Zen Flower Garden-1225",
+  "description": "An interactive generative art experience where flowers grow, sway, and bloom. Cut them to keep the garden tidy, or watch them burst when they reach the sky.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
