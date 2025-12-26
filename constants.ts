@@ -1,26 +1,32 @@
 
 // Visual Colors
 export const COLORS = {
-  // Background Gradient Stops
-  bgTop: '#052b52',    // Deep Midnight Blue (Top) - Matches the reference upper tone
-  bgBottom: '#000000', // Pure Black (Bottom)
+  // Background Gradient Stops - Solid Klein Blue
+  bgTop: '#002FA7',    // Klein Blue
+  bgBottom: '#002FA7', // Klein Blue
   
-  // Rich Flower Palette (Gradient support)
-  petalGradientStart: '#FFFFFF', // Pure White tip
-  petalGradientEnd: '#E8E8E8',   // Light Gray base (shadow)
-  coreGradientStart: '#FFD700',  // Gold
-  coreGradientEnd: '#FFA500',    // Orange depth
-  stamenColor: '#FFFFE0',        // Pale Yellow stamen
+  // Rich Flower Palette
+  // Petals: Pure White
+  petalGradientStart: '#FFFFFF', 
+  petalGradientEnd: '#F0F8FF',   // Very subtle AliceBlue for minimal shading without grayness
+  
+  // Core: Bright Fluorescent Lemon Yellow
+  coreGradientStart: '#f9f047',  // Bright Lemon Yellow
+  coreGradientEnd: '#e6dd25',    // Slightly deeper lemon for volume
+  coreCenterColor: '#f1fcd4',    // Very pale yellow-green for center detail
+  stamenColor: '#FFFFFF',        // White highlights
+  
+  // Bud Decoration
+  budColor: '#d2e69c',           // Unified Bright Tender Green (User specified previously)
+  budLineColor: '#9ab865',       // Darker, natural shade of budColor for texture definition
 
-  // Stem Palette: Multi-color green combinations + Vertical Gradients
-  // Covering: Deep Emerald, Olive, Tender Yellow, Pale Mint, Dark Ink
+  // Stem Palette: 4 Specific Green Gradients with Saturation Boosted by ~20%
+  // Configured as Base (Darker) -> Tip (Lighter/Brighter) for natural lighting and transparency
   stemPalette: [
-    { base: '#004526', tip: '#98FB98' }, // Deep Emerald -> Pale Mint (深翠绿 -> 浅薄荷)
-    { base: '#2F3815', tip: '#ADFF2F' }, // Deep Olive -> Tender Yellow Green (橄榄 -> 嫩黄绿)
-    { base: '#022119', tip: '#E1FF6B' }, // Dark Ink Green -> Bright Tender Yellow (墨绿 -> 嫩黄)
-    { base: '#1E4D2B', tip: '#90EE90' }, // Forest Green -> Light Green (Classic)
-    { base: '#0D2B26', tip: '#7FFFD4' }, // Dark Sea -> Aquamarine (Cool Tone)
-    { base: '#3A4B06', tip: '#CCFF00' }, // Brownish Olive -> Electric Lime (Vibrant)
+    { base: '#8AC800', tip: '#A4EB00' }, // Onion Green: More vivid Lime
+    { base: '#96D432', tip: '#B2F040' }, // Bean Green: Removed grey, brighter yellow-green
+    { base: '#8CCF36', tip: '#A8EB44' }, // Bean Cyan: Cleaner, more saturated green
+    { base: '#00B812', tip: '#00DB16' }, // Oil Green: Intense Neon Green
   ]
 };
 

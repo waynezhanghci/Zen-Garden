@@ -12,7 +12,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black font-sans">
+    <div className="relative w-full h-screen overflow-hidden bg-[#002FA7] font-sans">
       {/* Canvas Layer */}
       <FlowerGarden 
         onHarvest={handleHarvest} 
@@ -22,7 +22,8 @@ const App: React.FC = () => {
       
       {/* Top Left - Title (Large) */}
       <div className="absolute top-8 left-8 pointer-events-none z-20 select-none">
-         <h1 className="text-white/90 text-4xl md:text-5xl lg:text-6xl font-light tracking-[0.2em] uppercase drop-shadow-md opacity-90 font-serif">
+         {/* Changed from font-serif/font-light to font-sans/font-thin for "Thin Black" look */}
+         <h1 className="text-white/90 text-4xl md:text-5xl lg:text-6xl font-thin tracking-[0.2em] uppercase drop-shadow-md opacity-90 font-sans">
           Zen Garden
         </h1>
       </div>
@@ -31,10 +32,11 @@ const App: React.FC = () => {
       <div className="absolute top-6 right-6 flex flex-col items-end pointer-events-none z-20 select-none">
         {/* Score Card - Elegant Frosted Glass */}
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 flex flex-col items-center min-w-[120px] shadow-2xl transition-transform duration-300">
-          <span className="text-white/70 text-[10px] font-bold uppercase tracking-[0.25em] mb-2">
+          <span className="text-white/70 text-[10px] font-bold uppercase tracking-[0.25em] mb-2 font-sans">
             Narcissus
           </span>
-          <span className="text-white text-6xl font-extralight tracking-tighter leading-none font-serif">
+          {/* Changed from font-serif to font-sans font-thin */}
+          <span className="text-white text-6xl font-thin tracking-tighter leading-none font-sans">
             {score}
           </span>
         </div>

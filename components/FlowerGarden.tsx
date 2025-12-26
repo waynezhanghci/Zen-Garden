@@ -233,7 +233,8 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
     const turnDir = Math.random() > 0.5 ? 1 : -1;
     const rotationY = (turnDir * (10 + Math.random() * 10)) * (Math.PI / 180);
 
-    const visualScale = 0.85 + Math.random() * 0.3; 
+    // Reduced by ~20% (originally 0.85 + rand*0.3)
+    const visualScale = 0.68 + Math.random() * 0.24; 
     const depth = Math.random();
 
     const petalConfiguration: PetalConfig[] = [];
@@ -308,11 +309,11 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
           const rand = Math.random();
           let pColor = '#FFFFFF';
           if (rand < 0.2) {
-             pColor = stemColor; // 20% Stem Green
+             pColor = stemColor; 
           } else if (rand < 0.4) {
-             pColor = Math.random() > 0.5 ? '#FFD700' : '#FFE066'; // 20% Gold/Yellow
+             pColor = COLORS.coreGradientStart; 
           } else {
-             pColor = '#FFFFFF'; // 60% Petal White
+             pColor = '#FFFFFF'; 
           }
 
           particlesRef.current.push({
@@ -337,20 +338,41 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
     progress: number, 
     rotX: number, 
     rotY: number, 
-    configs: PetalConfig[]
+    configs: PetalConfig[],
+    stemTipColor: string // Passed from flower.colorTip
   ) => {
     if (progress <= 0.1) {
-        ctx.fillStyle = '#A4C639';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 8, 16, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw Bud
+        // INCREASED SIZE BY 50%:
+        // Old: budW = 7, budH = 18
+        // New: budW = 10.5, budH = 27
+        const budW = 10.5; 
+        const budH = 27; 
+
+        // Gradient logic update:
+        // Use a Top-Down gradient to ensure the bottom color matches the stem tip exactly.
+        const grad = ctx.createLinearGradient(0, -budH, 0, budH);
+        grad.addColorStop(0, '#f1fcd4');          // Top: Pale Highlight
+        grad.addColorStop(0.4, COLORS.budColor);  // Middle: The tender bud green
+        grad.addColorStop(1, stemTipColor);       // Bottom: Matches Stem Tip (Seamless)
         
-        ctx.strokeStyle = "rgba(0,0,0,0.15)";
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, -16);
-        ctx.lineTo(0, 16);
+        // Organic tapered bud shape (coordinates relative to budW/budH)
+        ctx.moveTo(0, -budH);
+        ctx.bezierCurveTo(budW * 1.3, -budH * 0.2, budW, budH * 0.8, 0, budH);
+        ctx.bezierCurveTo(-budW, budH * 0.8, -budW * 1.3, -budH * 0.2, 0, -budH);
+        ctx.fill();
+
+        // Vertical Center Line Decoration for "texture"
+        ctx.strokeStyle = COLORS.budLineColor; 
+        ctx.lineWidth = 1.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -budH * 0.9);
+        ctx.quadraticCurveTo(budW * 0.1, 0, 0, budH * 0.85);
         ctx.stroke();
+
         return;
     }
 
@@ -368,10 +390,10 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
         return Math.sin(angA) - Math.sin(angB);
     });
 
+    // Petal Gradient - Clean White
     const pGrad = ctx.createLinearGradient(0, 0, 0, -50);
-    pGrad.addColorStop(0, '#E8E8E8');
-    pGrad.addColorStop(0.3, '#FFFFFF');
-    pGrad.addColorStop(1, '#FFFFFF');
+    pGrad.addColorStop(0, COLORS.petalGradientEnd);
+    pGrad.addColorStop(1, COLORS.petalGradientStart);
 
     sortedIndices.forEach((originalIndex) => {
         const cfg = configs[originalIndex];
@@ -388,7 +410,8 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
         ctx.bezierCurveTo(-18, -15, -22, -40, 0, -55); 
         ctx.bezierCurveTo(22, -40, 18, -15, 0, 0);   
         ctx.fill();
-        ctx.strokeStyle = "rgba(200,200,200,0.3)";
+        // Removed heavy stroke, just subtle white/opacity for definition
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
         ctx.lineWidth = 0.5;
         ctx.stroke();
         ctx.restore();
@@ -399,24 +422,29 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
         const cupHeight = 10 * animFactor;
         ctx.save();
         ctx.translate(0, -2);
+        
+        // New Lemon Yellow Fluorescent Core
         const cupGrad = ctx.createRadialGradient(0, -2, 0, 0, 0, cupSize);
-        cupGrad.addColorStop(0, '#D48900'); 
-        cupGrad.addColorStop(0.5, '#FFD700'); 
-        cupGrad.addColorStop(1, '#FFE066'); 
+        cupGrad.addColorStop(0, COLORS.coreGradientEnd); 
+        cupGrad.addColorStop(1, COLORS.coreGradientStart); 
+        
         ctx.fillStyle = cupGrad;
         ctx.beginPath();
         ctx.ellipse(0, 0, cupSize, cupHeight, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#556B2F'; 
+        
+        // Very pale yellow-green center (instead of dark green)
+        ctx.fillStyle = COLORS.coreCenterColor; 
         ctx.beginPath();
-        ctx.ellipse(0, 0, cupSize * 0.3, cupHeight * 0.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, cupSize * 0.35, cupHeight * 0.35, 0, 0, Math.PI * 2);
         ctx.fill();
+        
         ctx.fillStyle = COLORS.stamenColor;
         for(let k=0; k<3; k++) {
              const a = (k / 3) * Math.PI * 2;
              const r = cupSize * 0.45;
              ctx.beginPath();
-             ctx.arc(Math.cos(a)*r, Math.sin(a)*r*0.6, 2, 0, Math.PI*2);
+             ctx.arc(Math.cos(a)*r, Math.sin(a)*r*0.6, 1.5, 0, Math.PI*2);
              ctx.fill();
         }
         ctx.restore();
@@ -625,17 +653,10 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
     ctx.translate(topX, topY);
     ctx.rotate((currentSway * 0.03) + flower.rotationZ); 
     
-    ctx.fillStyle = flower.colorTip; 
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 5, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(topX, topY);
-    ctx.rotate((currentSway * 0.03) + flower.rotationZ); 
+    // Draw the head (bud or flower)
     ctx.scale(flower.visualScale, flower.visualScale);
-    drawNarcissusHead(ctx, flower.bloomProgress, flower.rotationX, flower.rotationY, flower.petalConfiguration);
+    // PASS flower.colorTip to ensure bud matches stem tip
+    drawNarcissusHead(ctx, flower.bloomProgress, flower.rotationX, flower.rotationY, flower.petalConfiguration, flower.colorTip);
     ctx.restore();
   };
 
@@ -690,7 +711,8 @@ export const FlowerGarden: React.FC<FlowerGardenProps> = ({ onHarvest, isGesture
     ctx.translate(p2.x, p2.y);
     ctx.rotate(tipRotation + d.rotationZ); 
     ctx.scale(d.visualScale, d.visualScale);
-    drawNarcissusHead(ctx, d.bloomProgress, d.rotationX, d.rotationY, d.petalConfiguration);
+    // PASS d.colorTip to ensure bud matches stem tip on debris
+    drawNarcissusHead(ctx, d.bloomProgress, d.rotationX, d.rotationY, d.petalConfiguration, d.colorTip);
     ctx.restore();
   };
 
